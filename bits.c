@@ -111,6 +111,8 @@ NOTES:
  */
 int absVal(int x)
 {
+    int y = x >> 31;
+    return (x ^ y) - y;
     return 42;
 }
 
@@ -124,7 +126,9 @@ int absVal(int x)
  */
 int addOK(int x, int y)
 {
-    return 42;
+    int pos_overflow = (x > 0 && y > 0 && x + y <= 0);
+    int neg_overflow = (x < 0 && y < 0 && x + y >= 0);
+    return !(pos_overflow || neg_overflow);
 }
 
 /*
@@ -137,7 +141,11 @@ int addOK(int x, int y)
  */
 int allEvenBits(int x)
 {
-    return 42;
+    x &= x >> 16;
+    x &= x >> 8;
+    x &= x >> 4;
+    x &= x >> 2;
+    return x & 0x1;
 }
 
 /*
@@ -150,7 +158,13 @@ int allEvenBits(int x)
  */
 int allOddBits(int x)
 {
-    return 42;
+    x &= x >> 16;
+    x = x & 0x0000ffff;
+    x &= x >> 8;
+    x &= x >> 4;
+    x &= x >> 2;
+    x = x >> 1;
+    return x;
 }
 
 /*
@@ -163,7 +177,12 @@ int allOddBits(int x)
  */
 int anyEvenBit(int x)
 {
-    return 42;
+    x |= x >> 16;
+    x = x & 0x0000ffff;
+    x |= x >> 8;
+    x |= x >> 4;
+    x |= x >> 2;
+    return x & 0x1;
 }
 
 /*
@@ -176,7 +195,16 @@ int anyEvenBit(int x)
  */
 int anyOddBit(int x)
 {
-    return 42;
+    x |= x >> 16;
+    x = x & 0x0000ffff;
+    x |= x >> 8;
+    x = x & 0x000000ff;
+    x |= x >> 4;
+    x = x & 0x0000000f;
+    x |= x >> 2;
+    x = x & 3;
+    x = x >> 1;
+    return x;
 }
 
 /*
@@ -188,7 +216,17 @@ int anyOddBit(int x)
  */
 int bang(int x)
 {
-    return 42;
+    x |= x >> 16;
+    x = x & 0x0000ffff;
+    x |= x >> 8;
+    x = x & 0x000000ff;
+    x |= x >> 4;
+    x = x & 0x0000000f;
+    x |= x >> 2;
+    x = x & 3;
+    x |= x >> 1;
+    x = x & 1;
+    return x ^ 1;
 }
 
 /*
@@ -212,7 +250,11 @@ int bitAnd(int x, int y)
  */
 int bitCount(int x)
 {
-    return 42;
+    int cnt = 0;
+    for (int i = 0; i < 32; i++) {
+        cnt += 0x1 & (x >> i);
+    }
+    return cnt;
 }
 
 /*
@@ -227,6 +269,12 @@ int bitCount(int x)
  */
 int bitMask(int highbit, int lowbit)
 {
+    /* int over31 = (31 + (~highbit) + 1) >> 31; */
+    /* int mask_neg = ((highbit + (~lowbit) + 1) >> 31); */
+    /* int mh = -1 << (highbit + 1); */
+    /* mh = mh & (~over31); */
+    /* int ml = -1 << lowbit; */
+    /* return (mh ^ ml) & (~mask_neg); */
     return 42;
 }
 
@@ -1212,7 +1260,8 @@ int trueThreeFourths(int x)
  */
 int twosComp2SignMag(int x)
 {
-    return 42;
+    int sign = x & 0x80000000;
+    return absVal(x) | sign;
 }
 
 /*
