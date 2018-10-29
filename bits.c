@@ -101,6 +101,8 @@ NOTES:
      this file the authoritative source.
  */
 
+int conditional(int x, int y, int z);
+#define NAND(x, y) ~(x & y)
 /*
  * absVal - absolute value of x
  *   Example: absVal(-1) = 1.
@@ -238,7 +240,7 @@ int bang(int x)
  */
 int bitAnd(int x, int y)
 {
-    return 42;
+    return ~(~x | ~y);
 }
 
 /*
@@ -269,13 +271,9 @@ int bitCount(int x)
  */
 int bitMask(int highbit, int lowbit)
 {
-    /* int over31 = (31 + (~highbit) + 1) >> 31; */
-    /* int mask_neg = ((highbit + (~lowbit) + 1) >> 31); */
-    /* int mh = -1 << (highbit + 1); */
-    /* mh = mh & (~over31); */
-    /* int ml = -1 << lowbit; */
-    /* return (mh ^ ml) & (~mask_neg); */
-    return 42;
+    int one_l = highbit + (~lowbit) + 2;
+    int pos = conditional(one_l - 32, ((1 << one_l) - 1) << lowbit, 0xffffffff);
+    return conditional(((highbit + (~lowbit) + 1) >> 31) + 1, pos, 0);
 }
 
 /*
@@ -288,7 +286,7 @@ int bitMask(int highbit, int lowbit)
  */
 int bitMatch(int x, int y)
 {
-    return 42;
+    return (x & y) | (~x & ~y);
 }
 
 /*
@@ -300,7 +298,8 @@ int bitMatch(int x, int y)
  */
 int bitNor(int x, int y)
 {
-    return 42;
+    int first = NAND(NAND(x, x), NAND(y, y));
+    return NAND(first, first);
 }
 
 /*
@@ -312,7 +311,7 @@ int bitNor(int x, int y)
  */
 int bitOr(int x, int y)
 {
-    return 42;
+    return NAND(NAND(x, x), NAND(y, y));
 }
 
 /*
@@ -324,7 +323,17 @@ int bitOr(int x, int y)
  */
 int bitParity(int x)
 {
-    return 42;
+    x ^= x >> 16;
+    x = x & 0x0000ffff;
+    x ^= x >> 8;
+    x = x & 0x000000ff;
+    x ^= x >> 4;
+    x = x & 0x0000000f;
+    x ^= x >> 2;
+    x = x & 3;
+    x ^= x >> 1;
+    x = x & 1;
+    return !(x ^ 1);
 }
 
 /*
@@ -335,9 +344,18 @@ int bitParity(int x)
  *   Max ops: 45
  *   Rating: 4
  */
-int bitReverse(int x)
+#define R2(n) n, n + 2 * 64, n + 1 * 64, n + 3 * 64
+#define R4(n) R2(n), R2(n + 2 * 16), R2(n + 1 * 16), R2(n + 3 * 16)
+#define R6(n) R4(n), R4(n + 2 * 4), R4(n + 1 * 4), R4(n + 3 * 4)
+int bitReverse(int a)
 {
-    return 42;
+    const unsigned char BitReverseTable256[256] = {R6(0), R6(2), R6(1), R6(3)};
+    unsigned int c;  // c will get v reversed
+    c = (BitReverseTable256[a & 0xff] << 24) |
+        (BitReverseTable256[(a >> 8) & 0xff] << 16) |
+        (BitReverseTable256[(a >> 16) & 0xff] << 8) |
+        (BitReverseTable256[(a >> 24) & 0xff]);
+    return c;
 }
 
 /*
@@ -349,7 +367,7 @@ int bitReverse(int x)
  */
 int bitXor(int x, int y)
 {
-    return 42;
+    return (~y & x) | (~x & y);
 }
 
 /*
@@ -363,7 +381,17 @@ int bitXor(int x, int y)
  */
 int byteSwap(int x, int n, int m)
 {
-    return 42;
+    int ct_n = x & (0xff << (n << 3));
+    int ct_m = x & (0xff << (m << 3));
+    ct_n = ct_n >> (n << 3);
+    ct_m = ct_m >> (m << 3);
+    ct_n &= 0x000000ff;
+    ct_m &= 0x000000ff;
+    x &= ~bitMask((n << 3) + 7, n << 3);
+    x &= ~bitMask((m << 3) + 7, m << 3);
+    x |= ct_n << (m << 3);
+    x |= ct_m << (n << 3);
+    return x;
 }
 
 /*
@@ -375,7 +403,9 @@ int byteSwap(int x, int n, int m)
  */
 int conditional(int x, int y, int z)
 {
-    return 42;
+    int n_absx = (~absVal(x)) + 1;
+    int sign = n_absx >> 31;  // 0 -> 0x0, non 0 -> 0xffffffff
+    return (y & sign) | (z & ~sign);
 }
 
 /*
@@ -389,7 +419,46 @@ int conditional(int x, int y, int z)
  */
 int countLeadingZero(int x)
 {
-    return 42;
+    x = x | (x >> 1);
+    x = x | (x >> 2);
+    x = x | (x >> 4);
+    x = x | (x >> 8);
+    x = x | (x >> 16);
+    ++x;
+    int full = conditional(x, 0, 1);
+    int clz = 0;
+    clz += conditional(x << 1, 1, 0);
+    clz += conditional(x << 2, 1, 0);
+    clz += conditional(x << 3, 1, 0);
+    clz += conditional(x << 4, 1, 0);
+    clz += conditional(x << 5, 1, 0);
+    clz += conditional(x << 6, 1, 0);
+    clz += conditional(x << 7, 1, 0);
+    clz += conditional(x << 8, 1, 0);
+    clz += conditional(x << 9, 1, 0);
+    clz += conditional(x << 10, 1, 0);
+    clz += conditional(x << 11, 1, 0);
+    clz += conditional(x << 12, 1, 0);
+    clz += conditional(x << 13, 1, 0);
+    clz += conditional(x << 14, 1, 0);
+    clz += conditional(x << 15, 1, 0);
+    clz += conditional(x << 16, 1, 0);
+    clz += conditional(x << 17, 1, 0);
+    clz += conditional(x << 18, 1, 0);
+    clz += conditional(x << 19, 1, 0);
+    clz += conditional(x << 20, 1, 0);
+    clz += conditional(x << 21, 1, 0);
+    clz += conditional(x << 22, 1, 0);
+    clz += conditional(x << 23, 1, 0);
+    clz += conditional(x << 24, 1, 0);
+    clz += conditional(x << 25, 1, 0);
+    clz += conditional(x << 26, 1, 0);
+    clz += conditional(x << 27, 1, 0);
+    clz += conditional(x << 28, 1, 0);
+    clz += conditional(x << 29, 1, 0);
+    clz += conditional(x << 30, 1, 0);
+    clz += conditional(x << 31, 1, 0);
+    return conditional(full, 0, clz + 1);
 }
 
 /*
@@ -401,7 +470,7 @@ int countLeadingZero(int x)
  */
 int copyLSB(int x)
 {
-    return 42;
+    return conditional(x & 0x1, 0xffffffff, 0);
 }
 
 /*
@@ -413,7 +482,7 @@ int copyLSB(int x)
  */
 int distinctNegation(int x)
 {
-    return 42;
+    return conditional(x ^ (~x + 1), 1, 0);
 }
 
 /*
@@ -426,7 +495,8 @@ int distinctNegation(int x)
  */
 int dividePower2(int x, int n)
 {
-    return 42;
+    int is_pos = (x >> 31) + 1;
+    return conditional(is_pos & ((n >> 31) + 1), (x >> n) + 1, (x >> n));
 }
 
 /*
