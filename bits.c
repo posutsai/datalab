@@ -104,6 +104,9 @@ NOTES:
 int conditional(int x, int y, int z);
 #define NAND(x, y) ~(x & y)
 #define NEGA(x) ~(x) + 1
+int isGreater(int x, int y);
+int isLess(int x, int y);
+int intLog2(int x);
 /*
  * absVal - absolute value of x
  *   Example: absVal(-1) = 1.
@@ -739,7 +742,8 @@ unsigned floatUnsigned2Float(unsigned u)
  */
 int getByte(int x, int n)
 {
-    return 42;
+    int mask = 0xff << (n << 3);
+    return ((mask & x) >> (n << 3)) & 0xff;
 }
 
 /*
@@ -752,7 +756,13 @@ int getByte(int x, int n)
  */
 int greatestBitPos(int x)
 {
-    return 42;
+    x |= x >> 1;
+    x |= x >> 2;
+    x |= x >> 4;
+    x |= x >> 8;
+    x |= x >> 16;
+    ++x;
+    return conditional(x, 1 << intLog2(x), 0x80000000);
 }
 
 /* howManyBits - return the minimum number of bits required to represent x in
@@ -769,6 +779,7 @@ int greatestBitPos(int x)
  */
 int howManyBits(int x)
 {
+    // unsigned int u = (unsigned int)x;
     return 0;
 }
 
@@ -795,7 +806,19 @@ int implication(int x, int y)
  */
 int intLog2(int x)
 {
-    return 42;
+    unsigned int u = (unsigned int) x;
+    unsigned int r = 0, t;
+
+    t = ((~((u >> 16) + ~0U)) >> 27) & 0x10;
+    r |= t, u >>= t;
+    t = ((~((u >> 8) + ~0U)) >> 28) & 0x8;
+    r |= t, u >>= t;
+    t = ((~((u >> 4) + ~0U)) >> 29) & 0x4;
+    r |= t, u >>= t;
+    t = ((~((u >> 2) + ~0U)) >> 30) & 0x2;
+    r |= t, u >>= t;
+
+    return (r | (u >> 1));
 }
 
 /*
@@ -810,7 +833,7 @@ int intLog2(int x)
  */
 int isAsciiDigit(int x)
 {
-    return 42;
+    return isGreater(x, 0x2f) & isLess(x, 0x3a);
 }
 
 /*
@@ -822,7 +845,7 @@ int isAsciiDigit(int x)
  */
 int isEqual(int x, int y)
 {
-    return 42;
+    return !(x ^ y);
 }
 
 /*
@@ -834,7 +857,14 @@ int isEqual(int x, int y)
  */
 int isGreater(int x, int y)
 {
-    return 42;
+    int sgnext_x = x >> 31;
+    int sgnext_y = y >> 31;
+    int sgn_y = sgnext_y & 1;
+    int minus = x + (~y + 1);
+    int sgn_minus = (minus >> 31) & 1;
+    int which = sgnext_x ^ sgnext_y;
+    int result = (!!(x ^ y)) & ((which & sgn_y) | (!(which | (sgn_minus))));
+    return result;
 }
 
 /*
@@ -846,7 +876,13 @@ int isGreater(int x, int y)
  */
 int isLess(int x, int y)
 {
-    return 42;
+    int diff_sgn = !(x >> 31) ^ !(y >> 31);  // is 1 when signs are different
+    int a = diff_sgn & (x >> 31);            // diff signs and x is neg, gives 1
+    int b = !diff_sgn &
+            !((y + (~x + 1)) >>
+              31);  // same signs and difference is pos or = 0, gives 1
+    int f = a | b;
+    return conditional(x ^ y, f, 0);
 }
 
 /*
@@ -1000,7 +1036,12 @@ int isZero(int x)
  */
 int leastBitPos(int x)
 {
-    return 42;
+    x = x | (x << 1);
+    x = x | (x << 2);
+    x = x | (x << 4);
+    x = x | (x << 8);
+    x = x | (x << 16);
+    return conditional(x, 1 << intLog2((~x) + 1), 0);
 }
 
 /*
@@ -1013,7 +1054,15 @@ int leastBitPos(int x)
  */
 int leftBitCount(int x)
 {
-    return 42;
+    int inv_x = ~x;
+    inv_x = inv_x | (inv_x >> 1);
+    inv_x = inv_x | (inv_x >> 2);
+    inv_x = inv_x | (inv_x >> 4);
+    inv_x = inv_x | (inv_x >> 8);
+    inv_x = inv_x | (inv_x >> 16);
+    inv_x++;
+    int cnt = conditional(inv_x, intLog2(inv_x), 31);
+    return conditional(x & 0x80000000, 32 - cnt, 0);
 }
 
 /*
@@ -1026,7 +1075,12 @@ int leftBitCount(int x)
  */
 int logicalNeg(int x)
 {
-    return 42;
+    x |= x >> 16;
+    x |= x >> 8;
+    x |= x >> 4;
+    x |= x >> 2;
+    x |= x >> 1;
+    return (x & 1);
 }
 
 /*
@@ -1039,7 +1093,8 @@ int logicalNeg(int x)
  */
 int logicalShift(int x, int n)
 {
-    return 42;
+    int m = conditional(n, (bitMask(31 + NEGA(n), 0)), -1);
+    return (x >> n) & m;
 }
 
 /*
@@ -1181,7 +1236,12 @@ int rotateRight(int x, int n)
  */
 int satAdd(int x, int y)
 {
-    return 42;
+    int diff_sign = (!!((x ^ y) & 0x80000000));
+    int x_pos = !!((x >> 31) + 1);
+    return conditional(
+        diff_sign, x + y,
+        conditional(x_pos, conditional(isLess(x + y, x), 0x7fffffff, x + y),
+                    conditional(isGreater(x + y, x), 0x80000000, x + y)));
 }
 
 /*
@@ -1195,7 +1255,11 @@ int satAdd(int x, int y)
  */
 int satMul2(int x)
 {
-    return 42;
+    int is_pos = (x >> 31) + 1;
+    int sat2max = conditional(is_pos & isLess(x << 1, x), 0x7fffffff, x << 1);
+    int sat2min =
+        conditional((!is_pos) & isGreater(x << 1, x), 0x80000000, x << 1);
+    return conditional(is_pos, sat2max, sat2min);
 }
 
 /*
@@ -1262,7 +1326,10 @@ int specialBits(void)
  */
 int subtractionOK(int x, int y)
 {
-    return 42;
+    int diff_sign = !!((x ^ y) & 0x80000000);
+    int r = conditional(x >> 31, isGreater(x + (~y) + 1, x),
+                        isLess(x + (~y) + 1, x));
+    return conditional(diff_sign, !r, 1);
 }
 
 /*
