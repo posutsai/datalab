@@ -103,6 +103,7 @@ NOTES:
 
 int conditional(int x, int y, int z);
 #define NAND(x, y) ~(x & y)
+#define NEGA(x) ~(x) + 1
 /*
  * absVal - absolute value of x
  *   Example: absVal(-1) = 1.
@@ -495,8 +496,7 @@ int distinctNegation(int x)
  */
 int dividePower2(int x, int n)
 {
-    int is_pos = (x >> 31) + 1;
-    return conditional(is_pos & ((n >> 31) + 1), (x >> n) + 1, (x >> n));
+    return conditional(n | 0x0, (x >> n) - (x >> 31) - 1, x);
 }
 
 /*
@@ -507,7 +507,7 @@ int dividePower2(int x, int n)
  */
 int evenBits(void)
 {
-    return 42;
+    return 0x55555555;
 }
 
 /*
@@ -858,7 +858,8 @@ int isLess(int x, int y)
  */
 int isLessOrEqual(int x, int y)
 {
-    return 42;
+    int diff = y + NEGA(x);
+    return !(diff & 0x80000000);
 }
 
 /*
@@ -870,7 +871,7 @@ int isLessOrEqual(int x, int y)
  */
 int isNegative(int x)
 {
-    return 42;
+    return !!(x & 0x80000000);
 }
 
 /*
@@ -882,7 +883,7 @@ int isNegative(int x)
  */
 int isNonNegative(int x)
 {
-    return 42;
+    return !(x & 0x80000000);
 }
 
 /*
@@ -895,7 +896,7 @@ int isNonNegative(int x)
  */
 int isNonZero(int x)
 {
-    return 42;
+    return !!(x | 0x0);
 }
 
 /*
@@ -907,7 +908,7 @@ int isNonZero(int x)
  */
 int isNotEqual(int x, int y)
 {
-    return 42;
+    return !!(x + NEGA(y));
 }
 
 /*
@@ -931,7 +932,13 @@ int isPallindrome(int x)
  */
 int isPositive(int x)
 {
-    return 42;
+    int is_one = x;
+    is_one |= is_one >> 16;
+    is_one |= is_one >> 8;
+    is_one |= is_one >> 4;
+    is_one |= is_one >> 2;
+    is_one |= is_one >> 1;
+    return (!(x & 0x80000000)) & is_one;
 }
 
 /*
@@ -956,7 +963,7 @@ int isPower2(int x)
  */
 int isTmax(int x)
 {
-    return 42;
+    return !(x ^ 0x7fffffff);
 }
 
 /*
@@ -968,7 +975,7 @@ int isTmax(int x)
  */
 int isTmin(int x)
 {
-    return 42;
+    return !(x ^ 0x80000000);
 }
 
 /*
@@ -980,7 +987,7 @@ int isTmin(int x)
  */
 int isZero(int x)
 {
-    return 42;
+    return !(x & 0xffffffff);
 }
 
 /*
@@ -1043,7 +1050,7 @@ int logicalShift(int x, int n)
  */
 int maximumOfTwo(int x, int y)
 {
-    return 42;
+    return conditional(((x + NEGA(y)) >> 31) + 1, y, x);
 }
 
 /*
@@ -1065,7 +1072,7 @@ int minimumOfTwo(int x, int y)
  */
 int minusOne(void)
 {
-    return 42;
+    return 0xffffffff;
 }
 
 /*
@@ -1093,7 +1100,7 @@ int multFiveEighths(int x)
  */
 int negate(int x)
 {
-    return 42;
+    return NEGA(x);
 }
 
 /*
@@ -1104,7 +1111,7 @@ int negate(int x)
  */
 int oddBits(void)
 {
-    return 42;
+    return 0xaaaaaaaa;
 }
 
 /*
@@ -1131,7 +1138,9 @@ int remainderPower2(int x, int n)
  */
 int replaceByte(int x, int n, int c)
 {
-    return 42;
+    x &= ~bitMask((n << 3) + 7, n << 3);
+    x |= c << (n << 3);
+    return x;
 }
 
 /*
@@ -1215,7 +1224,7 @@ int satMul3(int x)
  */
 int sign(int x)
 {
-    return 42;
+    return conditional((x >> 31) + 1, conditional(absVal(x), 1, 0), -1);
 }
 
 /*
@@ -1228,7 +1237,8 @@ int sign(int x)
  */
 int signMag2TwosComp(int x)
 {
-    return 42;
+    int val = x & 0x7fffffff;
+    return conditional((x >> 31) + 1, val, NEGA(val));
 }
 
 /*
@@ -1239,7 +1249,7 @@ int signMag2TwosComp(int x)
  */
 int specialBits(void)
 {
-    return 42;
+    return 0xffca3fff;
 }
 
 /*
@@ -1264,7 +1274,7 @@ int subtractionOK(int x, int y)
  */
 int thirdBits(void)
 {
-    return 42;
+    return 0x49249249;
 }
 
 /*
@@ -1275,7 +1285,7 @@ int thirdBits(void)
  */
 int tmax(void)
 {
-    return 42;
+    return 0x7fffffff;
 }
 
 /*
@@ -1286,7 +1296,7 @@ int tmax(void)
  */
 int tmin(void)
 {
-    return 42;
+    return 0x80000000;
 }
 
 /*
@@ -1344,5 +1354,5 @@ int twosComp2SignMag(int x)
  */
 int upperBits(int n)
 {
-    return 42;
+    return bitMask(31, 31 - n + 1);
 }
